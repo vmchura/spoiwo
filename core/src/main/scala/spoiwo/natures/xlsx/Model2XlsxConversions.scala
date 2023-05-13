@@ -295,7 +295,7 @@ object Model2XlsxConversions extends BaseXlsx {
     anchor.setRow2(toRow)
 
     val pict = drawing.createPicture(anchor, pictureIdx)
-    pict.resize()
+    pict.resize(1.0)
     sheet
   }
 
