@@ -12,7 +12,8 @@ import org.apache.poi.ss.usermodel.{
   ReadingOrder,
   VerticalAlignment
 }
-import org.apache.poi.util.IOUtils
+import org.apache.poi.ss.util.ImageUtils
+import org.apache.poi.util.{IOUtils, Units}
 import org.apache.poi.xssf.usermodel._
 import org.openxmlformats.schemas.spreadsheetml.x2006.main.{CTTable, CTTableColumns, CTTableStyleInfo}
 import spoiwo.model._
@@ -280,6 +281,7 @@ object Model2XlsxConversions extends BaseXlsx {
     val is = new FileInputStream(image.filePath)
     val bytes = IOUtils.toByteArray(is)
     val pictureIdx = wb.addPicture(bytes, imageFormat)
+    is.close()
     val helper = wb.getCreationHelper
     val drawing = sheet.createDrawingPatriarch
 
@@ -289,13 +291,32 @@ object Model2XlsxConversions extends BaseXlsx {
     val (fromColumn, toColumn) = image.region.columnRange
     val (fromRow, toRow) = image.region.rowRange
 
-    anchor.setCol1(fromColumn)
-    anchor.setCol2(toColumn)
-    anchor.setRow1(fromRow)
-    anchor.setRow2(toRow)
+    if(image.maximumCoverImageAndPreserveRatio){
+      val widthSheetRangePixels = (fromColumn to toColumn).map(columnIndex => sheet.getColumnWidthInPixels(columnIndex)).sum
+      val heightSheetRangePixels = (fromRow to toRow).map(rowIndex => ImageUtils.getRowHeightInPixels(sheet, rowIndex)).sum
+      val inputStreamForDimension = new FileInputStream(image.filePath)
+      val dimension = ImageUtils.getImageDimension(inputStreamForDimension, imageFormat)
+      inputStreamForDimension.close()
+      val scaleWidth = widthSheetRangePixels*1.0/dimension.width
+      val scaleHeight = heightSheetRangePixels*1.0/dimension.height
+      val scale = scaleWidth min scaleHeight
+      val dx = ((widthSheetRangePixels - dimension.width*scale)/2).toInt
+      val dy = ((heightSheetRangePixels - dimension.height*scale)/2).toInt
+      anchor.setCol1(fromColumn)
+      anchor.setRow1(fromRow)
+      anchor.setDx1(dx * Units.EMU_PER_PIXEL)
+      anchor.setDy1(dy * Units.EMU_PER_PIXEL)
+      val pict = drawing.createPicture(anchor, pictureIdx)
+      pict.resize(scale)
+    }else {
+      anchor.setCol1(fromColumn)
+      anchor.setCol2(toColumn)
+      anchor.setRow1(fromRow)
+      anchor.setRow2(toRow)
 
-    val pict = drawing.createPicture(anchor, pictureIdx)
-    pict.resize(1.0)
+      val pict = drawing.createPicture(anchor, pictureIdx)
+      pict.resize(1.0)
+    }
     sheet
   }
 
