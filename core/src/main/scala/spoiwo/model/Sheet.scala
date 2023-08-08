@@ -122,6 +122,9 @@ case class Sheet private (
   def addRows(additionalRows: Iterable[Row]): Sheet =
     copy(rows = rows ++ additionalRows)
 
+  def addImages(additionalImages: Iterable[Image]): Sheet =
+    copy(images = images ++ additionalImages)
+
   def removeRow(row: Row): Sheet =
     copy(rows = rows.filter(_ != row))
 
